@@ -24,10 +24,6 @@ namespace IngameScript
 {
     public partial class Program : MyGridProgram
     {
-        const char ProgressBarFull = '█';
-        // Could also be '▒' if desired.
-        const char ProgressBarEmpty = '░';
-
         const string GasTankDefinitionId = "OxygenTank";
         const string HydrogenTankSubId = "HydrogenTank";
 
@@ -55,6 +51,28 @@ namespace IngameScript
                     .Append("+\n");
             }
             details.Append('+', displayWidth).Append('\n');
+        }
+
+        // TODO Move into its own class?
+        const char ProgressBarFull = '█';
+        // Could also be '▒' if desired.
+        const char ProgressBarEmpty = '░';
+        void RenderTextProgressBar(StringBuilder output, float percent, int width)
+        {
+            int fullSize = 0;
+            if (percent > 0.0f)
+            {
+                fullSize = Math.Max(1, (int)(width * percent));
+                output.Append(ProgressBarFull, fullSize);
+            }
+            output.Append(ProgressBarEmpty, width - fullSize)
+                .AppendLine();
+        }
+        
+        void RenderTextStat(StringBuilder output, float percent, string label = "Unknown")
+        {
+            percent *= 100;
+            output.AppendLine($"{label} is at {percent:G3} %");
         }
 
         public Program()
@@ -169,10 +187,8 @@ namespace IngameScript
                 current += battery.CurrentStoredPower;
             }
             p = current / capacity;
-            details.AppendFormat("Battery power is at {0:G3} %\n", (p * 100));
-            details.Append(ProgressBarFull, Math.Max(1, (int)(displayWidth * p)))
-                .Append(ProgressBarEmpty, (int) (displayWidth * (1.0f - p)))
-                .AppendLine();
+            RenderTextStat(details, p, "Battery power");
+            RenderTextProgressBar(details, p, displayWidth);
 
             // Calculate hydrogen stockpile stat.
             capacity = 0;
@@ -183,21 +199,46 @@ namespace IngameScript
                 current += tank.Capacity * (float) tank.FilledRatio;
             }
             p = current / capacity;
-            details.AppendFormat("Hydrogen is at {0:G3} %\n", (p * 100));
-            details.Append(ProgressBarFull, Math.Max(1, (int)(displayWidth * p)))
-                .Append(ProgressBarEmpty, (int)(displayWidth * (1.0f - p)))
-                .AppendLine();
+            RenderTextStat(details, p, "Hydrogen");
+            RenderTextProgressBar(details, p, displayWidth);
 
-            Echo(details.ToString());
+            // RenderTextTestProps();
 
             if (display != null)
             {
                 display.WriteText(details, false);
+                Echo($"Stats output to display:\n{display.CustomName}");
             }
             else
             {
                 Echo("Error: could not find display. Set display name as programming block argument and run the script again.");
             }
+        }
+
+        float testProp = 0;
+        Random rand = new Random();
+        void RenderTextTestProps()
+        {
+            RenderTextStat(details, 0.0f, "Empty prop");
+            RenderTextProgressBar(details, 0.0f, displayWidth);
+
+            if (testProp >= 1.0f)
+            {
+                testProp = 0.0f;
+            }
+            else
+            {
+                testProp += (float)rand.Next(200, 1500) / 10000.0f;
+                if (testProp > 1.0f)
+                {
+                    testProp = 1.0f;
+                }
+            }
+            RenderTextStat(details, testProp, "Test prop");
+            RenderTextProgressBar(details, testProp, displayWidth);
+
+            RenderTextStat(details, 1.0f, "Full prop");
+            RenderTextProgressBar(details, 1.0f, displayWidth);
         }
     }
 }
