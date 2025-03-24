@@ -80,8 +80,6 @@ namespace IngameScript
             float p = (power / capacity) * 100;
             details += String.Format("Battery power at {0:G2}%", p) + "\n";
 
-            details += "This is the latest version, from Mdk.\n";
-
             Echo(details);
 
             if (display != null)
