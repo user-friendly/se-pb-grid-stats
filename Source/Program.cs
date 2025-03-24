@@ -42,6 +42,9 @@ namespace IngameScript
         List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
         List<IMyGasTank> tanks = new List<IMyGasTank>();
 
+        ChangeIndicator IndicatorPower = new ChangeIndicator(3);
+        ChangeIndicator IndicatorHydrogen = new ChangeIndicator(3);
+
         const string SetupModeRequest = "CALIBRATE";
         bool IsSetupMode = false;
 
@@ -73,10 +76,10 @@ namespace IngameScript
                 .AppendLine();
         }
         
-        void RenderTextStat(StringBuilder output, float percent, string label = "Unknown")
+        void RenderTextStat(StringBuilder output, float percent, string label = "Unknown", string suffix = null)
         {
             percent *= 100;
-            output.AppendLine($"{label} is at {percent:G3} %");
+            output.AppendLine($"{label} is at {percent:G3} %{(suffix != null ? " " + suffix : "")}");
         }
 
         public Program()
@@ -185,7 +188,8 @@ namespace IngameScript
                 current += battery.CurrentStoredPower;
             }
             p = current / capacity;
-            RenderTextStat(details, p, "Battery power");
+            IndicatorPower.Step(p);
+            RenderTextStat(details, p, "Battery power", IndicatorPower.GetIndicator());
             RenderTextProgressBar(details, p, displayWidth);
 
             // Calculate hydrogen stockpile stat.
@@ -197,7 +201,8 @@ namespace IngameScript
                 current += tank.Capacity * (float) tank.FilledRatio;
             }
             p = current / capacity;
-            RenderTextStat(details, p, "Hydrogen");
+            IndicatorHydrogen.Step(p);
+            RenderTextStat(details, p, "Hydrogen", IndicatorHydrogen.GetIndicator());
             RenderTextProgressBar(details, p, displayWidth);
 
             // RenderTextTestProps();
@@ -206,6 +211,7 @@ namespace IngameScript
             {
                 display.WriteText(details, false);
                 Echo($"Stats output to display:\n{display.CustomName}");
+                Echo($"Last run time (in ms): {Runtime.LastRunTimeMs}");
             }
             else
             {
