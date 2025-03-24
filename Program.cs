@@ -24,6 +24,10 @@ namespace IngameScript
 {
     public partial class Program : MyGridProgram
     {
+        const char ProgressBarFull = '█';
+        // Could also be '▒' if desired.
+        const char ProgressBarEmpty = '░';
+
         const string GasTankDefinitionId = "OxygenTank";
         const string HydrogenTankSubId = "HydrogenTank";
 
@@ -58,8 +62,8 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
 
             // Add an extra height for new lines.
-            int maxCap = (displayWidth * displayHeight) + displayHeight;
-            details = new StringBuilder(maxCap, maxCap + 1);
+            int maxCap = ((displayWidth * displayHeight) + displayHeight) * 2;
+            details = new StringBuilder(0, maxCap + 1);
 
             Echo("Information program initiated."); 
         }
@@ -166,7 +170,8 @@ namespace IngameScript
             }
             p = current / capacity;
             details.AppendFormat("Battery power is at {0:G3} %\n", (p * 100));
-            details.Append('█', Math.Max(1, (int)(displayWidth * p)))
+            details.Append(ProgressBarFull, Math.Max(1, (int)(displayWidth * p)))
+                .Append(ProgressBarEmpty, (int) (displayWidth * (1.0f - p)))
                 .AppendLine();
 
             // Calculate hydrogen stockpile stat.
@@ -179,7 +184,8 @@ namespace IngameScript
             }
             p = current / capacity;
             details.AppendFormat("Hydrogen is at {0:G3} %\n", (p * 100));
-            details.Append('█', Math.Max(1, (int)(displayWidth * p)))
+            details.Append(ProgressBarFull, Math.Max(1, (int)(displayWidth * p)))
+                .Append(ProgressBarEmpty, (int)(displayWidth * (1.0f - p)))
                 .AppendLine();
 
             Echo(details.ToString());
