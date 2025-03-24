@@ -24,6 +24,10 @@ namespace IngameScript
 {
     public partial class Program : MyGridProgram
     {
+        // Type and frequency should match.
+        UpdateType MainLoopUpdateCheck = UpdateType.Update100;
+        UpdateFrequency MainLoopUpdateFrequency = UpdateFrequency.Update100;
+
         const string GasTankDefinitionId = "OxygenTank";
         const string HydrogenTankSubId = "HydrogenTank";
 
@@ -77,7 +81,7 @@ namespace IngameScript
 
         public Program()
         {
-            Runtime.UpdateFrequency = UpdateFrequency.Update100;
+            Runtime.UpdateFrequency = MainLoopUpdateFrequency;
 
             // Add an extra height for new lines.
             int maxCap = ((displayWidth * displayHeight) + displayHeight) * 2;
@@ -119,10 +123,9 @@ namespace IngameScript
                 return;
             }
 
-            if ((updateSource & UpdateType.Update100) == 0)
+            if ((updateSource & MainLoopUpdateCheck) == 0)
             {
                 return;
-            
             }
 
             if (IsSetupMode) {
@@ -170,11 +173,6 @@ namespace IngameScript
 
             details.Append("Active tanks: ")
                 .AppendLine(tanks.Count.ToString());
-
-            //foreach (var tank in tanks)
-            //{
-            //    details.AppendLine("Hydro tank: " + tank.CustomName);
-            //}
 
             float capacity = 0;
             float current = 0;
