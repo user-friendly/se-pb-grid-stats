@@ -25,25 +25,10 @@ namespace IngameScript
         IMyTextPanel display = null;
         List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
 
-        // TODO Remove test var.
-        //int c = 0;
-
         public Program()
         {
-            // The constructor, called only once every session and
-            // always before any other method is called. Use it to
-            // initialize your script. 
-            //     
-            // The constructor is optional and can be removed if not
-            // needed.
-            // 
-            // It's recommended to set Runtime.UpdateFrequency 
-            // here, which will allow your script to run itself without a 
-            // timer block.
-
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
-            // TODO Remove test var.
-            // c = 0;
+
             Echo("Information program initiated.");
         }
 
@@ -95,8 +80,7 @@ namespace IngameScript
             float p = (power / capacity) * 100;
             details += String.Format("Battery power at {0:G2}%", p) + "\n";
 
-            // TODO Remove test var.
-            //details += "This is run: " + (c++) + "\n";
+            details += "This is the latest version, from Mdk.\n";
 
             Echo(details);
 
