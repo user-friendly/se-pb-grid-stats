@@ -82,6 +82,27 @@ namespace IngameScript
             output.AppendLine($"{label} is at {percent:G3} %{(suffix != null ? " " + suffix : "")}");
         }
 
+        void RenderTextTimeSpan(StringBuilder output, TimeSpan ts)
+        {
+            // {ts.Days} days, {ts.Hours} h, {ts.Minutes} mins"
+            if (ts.Days > 0)
+            {
+                output.Append($"{ts.Days} day{(ts.Hours > 0 ? ", " : "")}");
+            }
+            if (ts.Hours > 0)
+            {
+                output.Append($"{ts.Hours} hour{(ts.Minutes > 0 ? ", " : "")}");
+            }
+            if (ts.Minutes > 0)
+            {
+                output.Append($"{ts.Minutes} min{(ts.Seconds > 0 ? ", " : "")}");
+            }
+            if (ts.Seconds > 0)
+            {
+                output.Append($"{ts.Seconds} sec");
+            }
+        }
+
         public Program()
         {
             Runtime.UpdateFrequency = MainLoopUpdateFrequency;
@@ -134,7 +155,7 @@ namespace IngameScript
             if (IsSetupMode) {
                 Echo("In calibration mode.");
                 if (display != null) {
-                    Echo(String.Format("Display: {0}", display.CustomName));
+                    Echo($"Display: {display.CustomName}");
                 }
                 else
                 {
@@ -161,9 +182,6 @@ namespace IngameScript
                     && battery.IsSameConstructAs(Me);
             });
 
-            details.Append("Active batteries: ")
-                .AppendLine(batteries.Count.ToString());
-
             // Get all enabled hydrogen tanks.
             GridTerminalSystem.GetBlocksOfType(tanks, tank =>
             {
@@ -174,23 +192,51 @@ namespace IngameScript
                     && tank.BlockDefinition.SubtypeName.Contains(HydrogenTankSubId);
             });
 
-            details.Append("Active tanks: ")
-                .AppendLine(tanks.Count.ToString());
+            details.AppendLine($"Active batteris, tanks: {batteries.Count.ToString()}, {tanks.Count.ToString()}")
+                .AppendLine();
 
             float capacity = 0;
             float current = 0;
             float p = 0;
+
+            float flow = 0.0f;
 
             // Calculate electrical power stat.
             foreach (var battery in batteries)
             {
                 capacity += battery.MaxStoredPower;
                 current += battery.CurrentStoredPower;
+
+                // In MegaWatts (MW).
+                flow += battery.CurrentInput - battery.CurrentOutput;
             }
             p = current / capacity;
-            IndicatorPower.Step(p);
+            IndicatorPower.Step(current);
             RenderTextStat(details, p, "Battery power", IndicatorPower.GetIndicator());
             RenderTextProgressBar(details, p, displayWidth);
+            
+            TimeSpan ts = new TimeSpan();
+            // The above battery input/output is in MW. The current power is in MWh.
+            // Dividing the stored MWh by the consumed MW will give us the time it takes
+            // to discharge the battery, in hours. Below, this given time is multiplied by
+            // 60 minutes, to give us a more granular information display. The TS class
+            // accepts whole numbers and not fractions, which the stored/consumed MW ends up
+            // usually being in.
+            if (flow < 0.0f)
+            {
+                ts = new TimeSpan(0, (int)(current / -flow * 60.0f), 0);
+                details.Append($"Discharged in ");
+            }
+            else if (flow > 0.0f)
+            {
+                ts = new TimeSpan(0, (int)((capacity - current) / flow * 60.0f), 0);
+                details.Append($"Recharged in ");
+            }
+            RenderTextTimeSpan(details, ts);
+            details.AppendLine();
+            details.AppendLine($"{current:F2}/{capacity:F2} MWh");
+
+            details.AppendLine();
 
             // Calculate hydrogen stockpile stat.
             capacity = 0;
@@ -201,9 +247,32 @@ namespace IngameScript
                 current += tank.Capacity * (float) tank.FilledRatio;
             }
             p = current / capacity;
-            IndicatorHydrogen.Step(p);
+            IndicatorHydrogen.Step(current);
+            
+            // FIXME This is a total magic hack. And this convoluted thing comes from the fact that
+            // I'm using the indicator class for something that it was not designed to be used for.
+            flow = (IndicatorHydrogen.GetDelta() / (3.0f * (float) Runtime.TimeSinceLastRun.TotalSeconds));
+
             RenderTextStat(details, p, "Hydrogen", IndicatorHydrogen.GetIndicator());
             RenderTextProgressBar(details, p, displayWidth);
+
+            if (flow != 0.0f)
+            {
+                ts = new TimeSpan();
+                if (flow < 0.0f)
+                {
+                    ts = new TimeSpan(0, 0, (int)(current / -flow));
+                    details.Append($"Depleted in ");
+                }
+                else if (flow > 0.0f)
+                {
+                    ts = new TimeSpan(0, 0, (int)((capacity - current) / flow));
+                    details.Append($"Refilled in ");
+                }
+                RenderTextTimeSpan(details, ts);
+                details.AppendLine();
+            }
+            details.AppendLine(FormatSi(current, true) + "/" + FormatSi(capacity));
 
             // RenderTextTestProps();
 
@@ -217,6 +286,25 @@ namespace IngameScript
             {
                 Echo("Error: could not find display. Set display name as programming block argument and run the script again.");
             }
+        }
+
+        string[] prefixeSI = { "K", "M", "G", "T" };
+        string FormatSi(float number, bool omitPrefix = false)
+        {
+            int log10 = (int)Math.Log10(Math.Abs(number));
+            if (log10 > 2)
+            {
+                // Gets you the index in prefixSi.
+                int k = Math.Min(4, ((int)log10 / 3));
+                // Divide `number` by this to get it in prefix units.
+                int newNumber = (int)(number / Math.Pow(10, k * 3));
+                if (omitPrefix)
+                {
+                    return $"{newNumber:N0}";
+                }
+                return $"{newNumber:N0} {prefixeSI[k - 1]}";
+            }
+            return number.ToString();
         }
 
         float testProp = 0;
